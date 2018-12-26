@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import colorsys
 
 
-image = cv2.imread("mercator-projection.jpg")
+image = cv2.imread("input/france.jpg")
 
 # define range of blue color in HSV
 lower_green = np.array([0,8,5])
