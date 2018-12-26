@@ -31,18 +31,16 @@ lower_black = np.array([0,0,0])
 
 # Convert BGR to HSV
 hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-blank_image = np.zeros((480,633,3), np.uint8)
-oldPix = hsv[0,0]
-Pix = np.array([0,0,0])
-for i in range(0,479) :
-    for o in range(0,632) :
-        if hsv[i,o][0] < blank_image[i,o][0]+ 50 && hsv[i,o][0] > blank_image[i,o][0]- 50 && hsv[i,o][1] < blank_image[i,o][1]+ 50 && hsv[i,o][1] > blank_image[i,o][1]- 50 && hsv[i,o][2] < blank_image[i,o][2]+ 50 && hsv[i,o][2] > blank_image[i,o][2]:
-           blank_image[i,o]=255
-        oldPix = hsv[i,o]
+
     
 
 
 # Threshold the HSV image to get only blue colors
+mask_black = cv2.inRange(hsv, lower_black, upper_black)
+image[mask_black != 0] = [0,200,0]
+hsv[mask_black != 0] = [0,200,0]
+
+
 mask_g = cv2.inRange(hsv, lower_green, upper_green)
 image[mask_g != 0] = [0,200,0]
 hsv[mask_g != 0] = [0,200,0]
@@ -56,9 +54,15 @@ image[mask_w != 0] = [255,255,255]
 hsv[mask_w != 0] = [255,255,255]
 
 
-mask_black = cv2.inRange(hsv, lower_black, upper_black)
-image[mask_black != 0] = [0,200,0]
-hsv[mask_black != 0] = [0,200,0]
+blank_image = np.zeros((480,633,3), np.uint8)
+oldPix = image[0,0]
+Pix = np.array([0,0,0])
+for i in range(0,479) :
+    for o in range(0,632) :
+        Pix = image[i,o]
+        if((Pix[0]== 255 and Pix[1]==0 and Pix[2]==0) and(oldPix[0]== 0 and oldPix[1]==200 and oldPix[2]==0) or (Pix[0]== 0 and Pix[1]==200 and Pix[2]==0) and(oldPix[0]== 255 and oldPix[1]==0 and oldPix[2]==0) or (Pix[0]== 0 and Pix[1]==200 and Pix[2]==0 and oldPix[0]== 255 and oldPix[1]==255 and oldPix[2]==255)):
+           blank_image[i,o]= [200,50,10]
+        oldPix = image[i,o]
 
 
 
@@ -74,6 +78,7 @@ cv2.imshow("result", blank_image)
 #cv2.imshow("result", res)
 
 cv2.imwrite( "result_mercator-projection.jpg", image);
+cv2.imwrite("test.jpg", blank_image)
 #cv2.imwrite( "result/result_green.jpg", res_b);
 #cv2.imwrite( "result/result_white.jpg", res_w);
 
