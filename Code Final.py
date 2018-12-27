@@ -23,7 +23,7 @@ def isEgal(bvr1,bvr2):
         return False
     
 
-image = cv2.imread("testnuit.jpg")
+image = cv2.imread("amerique.jpg")
 
 
 # define range of blue color in HSV
