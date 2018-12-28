@@ -1,54 +1,142 @@
+import os
+import time
+
+import logging
+import logzero
+from logzero import logger
 import cv2
-import numpy as np
-from matplotlib import pyplot as plt
-import colorsys
+
+from sense_hat import SenseHat
+from picamera import PiCamera
 
 
-image = cv2.imread("input/france.jpg")
+""" 
+		Global variables
+"""
+# CONSTANTS
+DIR_PATH = os.path.dirname(os.path.realpath(__file__))
+TIME_LOOP = 000 # duration of a loop
+TIME_STOP = 000 # duration from which the program stop
 
-# define range of blue color in HSV
-lower_green = np.array([0,8,5])
-upper_green = np.array([80, 255, 255])
+loop = True
+nbImage = 1
+start_program_time = int(time.time()) # timestamp when the program has started (in second)
+start_loop_time = 0 # timestamp when the loop has started
 
-lower_blue = np.array([90,60,0])
-upper_blue = np.array([130,255,200])
+# CAMERA
+camera = PiCamera()
+camera.resolution = (640,480)
+
+# SENSEHAT
+sh = SenseHat()
+
+# 	Matrix led
+# 		Colors
+g = [0,50,0]
+o = [0,0,0]
+#		Define a simple image
+img1 = [
+	g,g,g,g,g,g,g,g,
+	o,g,o,o,o,o,g,o,
+	o,o,g,o,o,g,o,o,
+	o,o,o,g,g,o,o,o,
+	o,o,o,g,g,o,o,o,
+	o,o,g,g,g,g,o,o,
+	o,g,g,g,g,g,g,o,
+	g,g,g,g,g,g,g,g,
+]
+
+# Logfile parameters
+formatter = logging.Formatter('%(name)s - %(asctime)-15s - %(levelname)s: %(message)s') # Set a custom formatter
+logzero.formatter(formatter)
+
+####
+
+def update_matrix(state):
+	""" Update the state of the matrix led """
+	if state == 0:
+		sh.set_pixels(img1)
+	elif state == 1:
+		sh.set_rotation(90)
+	else:
+		sh.set_rotation(270)
 
 """
-lower_white = np.array([30,0,90])
-upper_white = np.array([180,30,255])
-
-lower_white = np.array([30,0,90])
-upper_white = np.array([180,8,255])
+		GET main data
 """
-lower_white = np.array([30,0,0])
-upper_white = np.array([180,30,255])
 
-# Convert BGR to HSV
-hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+def get_loop_timestamp():
+	""" Get the timestap when the loop has started """
+	start_loop_time = time.time()
 
- # Threshold the HSV image to get only blue colors
-mask_b = cv2.inRange(hsv, lower_blue, upper_blue)
-image[mask_b != 0] = [255,0,0]
+def get_sensors_value():
+	pass
 
-mask_w = cv2.inRange(hsv, lower_white, upper_white)
-image[mask_w != 0] = [255,255,255]
+def take_picture():
+	""" Prend une photo et l'enregistre dans un fichier """
+	camera.capture(dir_path+"/image_"+str(nbImage).zfill(3)+".jpg")
+	nbImage += 1
 
-mask_g = cv2.inRange(hsv, lower_green, upper_green)
-image[mask_g != 0] = [0,200,0]
+"""
+		OPENCV
+"""
 
-# Bitwise-AND mask and original image
+def is_night():
+	pass
 
-res_w = cv2.bitwise_and(image,image, mask=mask_w)
+def draw_area():
+	pass
 
-res_b = cv2.bitwise_and(image, image, mask= mask_b)
-res_g = cv2.bitwise_and(image, image, mask= mask_g)
+def analyse_picture():
+	pass
 
-cv2.imshow("result", image)
-#cv2.imshow("result", res)
+"""
+		finish up the loop
+"""
 
-cv2.imwrite( "result/result_mercator-projection.jpg", image);
-#cv2.imwrite( "result/result_green.jpg", res_b);
-#cv2.imwrite( "result/result_white.jpg", res_w);
+def write_result(timestamp, water, ground, cloud, other, magnetometer, accelerometer):
+	""" Write data in the CSV file """
+	# Save the data to the file
+	logger.info("%s,%s", humidity, temperature, )
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+def check_time():
+	""" check if the program must be stopped """
+	now = int(time.time()) # in second
+	# 3h == 10,800 seconds
+	if (now - start_time) >= TIME_STOP:
+		# Stopper le programme
+		loop = False
+	else:
+		wait()
+
+def wait():
+	""" Wait before start again  """
+	now = time.time()
+	if (now - start_loop_time) < TIME_LOOP:
+		time.sleep(TIME_LOOP - (now - start_loop_time))
+
+
+##########################
+## in progress
+
+logzero.logfile(DIR_PATH+"/data01.csv") # Create the CSV file
+
+while loop:
+	update_matrix(0)
+	get_loop_timestamp()
+	get_sensors_value()
+	take_picture()
+
+	if not is_night():
+		update_matrix(1)
+		draw_area()
+		analyse_picture()
+
+	update_matrix(2)
+	write_result()
+	check_time()
+
+##########################
+## finish up the program
+
+camera.close()
