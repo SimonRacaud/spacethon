@@ -5,6 +5,7 @@ import logging
 import logzero
 from logzero import logger
 import cv2
+import ephem # position ISS
 
 from sense_hat import SenseHat
 from picamera import PiCamera
@@ -29,6 +30,7 @@ camera.resolution = (640,480)
 
 # SENSEHAT
 sh = SenseHat()
+sense.set_imu_config(True, False, True) # (compass_enabled, gyro_enabled, accel_enabled)
 
 # 	Matrix led
 # 		Colors
@@ -47,8 +49,18 @@ img1 = [
 ]
 
 # Logfile parameters
-formatter = logging.Formatter('%(name)s - %(asctime)-15s - %(levelname)s: %(message)s') # Set a custom formatter
+"""[a voir]""" formatter = logging.Formatter('%(timestamp)s - %(water)s - %(ground)s - %(cloud)s - %(other)s - %(magnetometer)s - %(accelerometer)s') # Set a custom formatter
 logzero.formatter(formatter)
+logzero.logfile(DIR_PATH+"/data01.csv") # Create the CSV file
+
+# Config ephem
+name = "ISS (ZARYA)"
+line1 = "1 25544U 98067A   18362.36563081 -.00011736  00000-0 -17302-3 0  9998"
+line2 = "2 25544  51.6377 131.0297 0002747 209.2490 215.4464 15.53700691148714"
+# source : http://www.celestrak.com/NORAD/elements/stations.txt
+iss = ephem.readtle(name, line1, line2)
+# utilisation : print(iss.sublat, iss.sublong)
+iss.compute()
 
 ####
 
@@ -70,12 +82,42 @@ def get_loop_timestamp():
 	start_loop_time = time.time()
 
 def get_sensors_value():
-	pass
+	""" Get the value of the sensors """
+	magnetometer = sense.get_compass_raw() # magnetometer
+	accelerometer = sense.get_accelerometer() # accelerometer
+	return (magnetometer, accelerometer)
 
 def take_picture():
 	""" Prend une photo et l'enregistre dans un fichier """
+	get_latlon() # Set lat/long data in the meta data of the picture
 	camera.capture(dir_path+"/image_"+str(nbImage).zfill(3)+".jpg")
+	iss.compute() # mise à jour coordonnés
 	nbImage += 1
+
+def get_latitude_longitude():
+	""" Get latitude/longitude and set there in the meta data of the camera """
+    iss.compute() # Get the lat/long values from ephem
+
+    long_value = [float(i) for i in str(iss.sublong).split(":")]
+
+    if long_value[0] < 0:
+
+        long_value[0] = abs(long_value[0])
+        camera.exif_tags['GPS.GPSLongitudeRef'] = "W"
+    else:
+        camera.exif_tags['GPS.GPSLongitudeRef'] = "E"
+    camera.exif_tags['GPS.GPSLongitude'] = '%d/1,%d/1,%d/10' % (long_value[0], long_value[1], long_value[2]*10)
+
+    lat_value = [float(i) for i in str(iss.sublat).split(":")]
+
+    if lat_value[0] < 0:
+
+        lat_value[0] = abs(lat_value[0])
+        camera.exif_tags['GPS.GPSLatitudeRef'] = "S"
+    else:
+        camera.exif_tags['GPS.GPSLatitudeRef'] = "N"
+
+    camera.exif_tags['GPS.GPSLatitude'] = '%d/1,%d/1,%d/10' % (lat_value[0], lat_value[1], lat_value[2]*10)
 
 """
 		OPENCV
@@ -97,7 +139,7 @@ def analyse_picture():
 def write_result(timestamp, water, ground, cloud, other, magnetometer, accelerometer):
 	""" Write data in the CSV file """
 	# Save the data to the file
-	logger.info("%s,%s", humidity, temperature, )
+	logger.info("%s,%s,%s,%s,%s", timestamp, water, )
 
 def check_time():
 	""" check if the program must be stopped """
@@ -119,12 +161,10 @@ def wait():
 ##########################
 ## in progress
 
-logzero.logfile(DIR_PATH+"/data01.csv") # Create the CSV file
-
 while loop:
 	update_matrix(0)
 	get_loop_timestamp()
-	get_sensors_value()
+	magnetometer, accelerometer = get_sensors_value()
 	take_picture()
 
 	if not is_night():
@@ -133,7 +173,7 @@ while loop:
 		analyse_picture()
 
 	update_matrix(2)
-	write_result()
+	write_result(...)
 	check_time()
 
 ##########################
