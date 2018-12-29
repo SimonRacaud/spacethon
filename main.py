@@ -1,54 +1,217 @@
+"""
+	SPACETHON an AstroPI Project
+		2018-2019
+	
+	Authors: GAZEAU Lucas, RACAUD Simon, POIRIER Victor, MASSE Thomas 
+
+	---
+
+	Note: 	get_sensors_value(), write_result()			: A compléter
+			is_night(), draw_area(), analyse_picture()	: A faire
+"""
+
+import os
+import time
+
+import logging
+import logzero
+from logzero import logger
 import cv2
-import numpy as np
-from matplotlib import pyplot as plt
-import colorsys
+import ephem # position ISS
+
+from sense_hat import SenseHat
+from picamera import PiCamera
 
 
-image = cv2.imread("input/france.jpg")
+""" 
+		Global variables/constants
+"""
+### CONSTANTS
+DIR_PATH = os.path.dirname(os.path.realpath(__file__))
+TIME_LOOP = 000 # duration of a loop
+TIME_STOP = 000 # duration from which the program stop
 
-# define range of blue color in HSV
-lower_green = np.array([0,8,5])
-upper_green = np.array([80, 255, 255])
+### VARIABLES
+loop = True
+nbImage = 1
+start_program_time = int(time.time()) # timestamp when the program has started (in second)
+start_loop_time = 0 # timestamp when the loop has started
 
-lower_blue = np.array([90,60,0])
-upper_blue = np.array([130,255,200])
+""" 
+		Config peripherals
+"""
+### CAMERA
+camera = PiCamera()
+camera.resolution = (640,480)
+
+### SENSEHAT
+sh = SenseHat()
+sense.set_imu_config(True, False, True) # (compass_enabled, gyro_enabled, accel_enabled)
+
+##	Matrix led
+# 		Colors
+g = [0,50,0]
+o = [0,0,0]
+#		Define a simple image
+img1 = [
+	g,g,g,g,g,g,g,g,
+	o,g,o,o,o,o,g,o,
+	o,o,g,o,o,g,o,o,
+	o,o,o,g,g,o,o,o,
+	o,o,o,g,g,o,o,o,
+	o,o,g,g,g,g,o,o,
+	o,g,g,g,g,g,g,o,
+	g,g,g,g,g,g,g,g,
+]
+
+### Logfile parameters
+"""[a voir]""" formatter = logging.Formatter('%(timestamp)s - %(water)s - %(ground)s - %(cloud)s - %(other)s - %(magnetometer)s - %(accelerometer)s') # Set a custom formatter
+logzero.formatter(formatter)
+logzero.logfile(DIR_PATH+"/data01.csv") # Create the CSV file
+
+### Config ephem
+name = "ISS (ZARYA)"
+line1 = "1 25544U 98067A   18362.36563081 -.00011736  00000-0 -17302-3 0  9998"
+line2 = "2 25544  51.6377 131.0297 0002747 209.2490 215.4464 15.53700691148714"
+# source : http://www.celestrak.com/NORAD/elements/stations.txt
+iss = ephem.readtle(name, line1, line2)
+# utilisation : print(iss.sublat, iss.sublong)
+iss.compute()
+
+""" 
+		[FUNCTIONS]
+"""
+
+def update_matrix(state):
+	""" Update the state of the matrix led. """
+	if state == 0:
+		sh.set_pixels(img1)
+	elif state == 1:
+		sh.set_rotation(90)
+	else:
+		sh.set_rotation(270)
 
 """
-lower_white = np.array([30,0,90])
-upper_white = np.array([180,30,255])
-
-lower_white = np.array([30,0,90])
-upper_white = np.array([180,8,255])
+		GET main data
 """
-lower_white = np.array([30,0,0])
-upper_white = np.array([180,30,255])
 
-# Convert BGR to HSV
-hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+def get_loop_timestamp():
+	""" Get the timestap when the loop has started """
+	start_loop_time = time.time()
 
- # Threshold the HSV image to get only blue colors
-mask_b = cv2.inRange(hsv, lower_blue, upper_blue)
-image[mask_b != 0] = [255,0,0]
+def get_sensors_value():
+	""" Get the value of the sensors 
+	"""
+	magnetometer = sense.get_compass_raw() # magnetometer
+	accelerometer = sense.get_accelerometer() # accelerometer
+	return (magnetometer, accelerometer)
 
-mask_w = cv2.inRange(hsv, lower_white, upper_white)
-image[mask_w != 0] = [255,255,255]
+def take_picture():
+	""" Prend une photographie et l'enregistre dans un nouveau fichier. 
+	"""
+	get_latlon() # Set lat/long data in the meta data of the picture
+	camera.capture(dir_path+"/image_"+str(nbImage).zfill(3)+".jpg")
+	iss.compute() # mise à jour coordonnés
+	nbImage += 1
 
-mask_g = cv2.inRange(hsv, lower_green, upper_green)
-image[mask_g != 0] = [0,200,0]
+def get_latitude_longitude():
+	""" Get latitude/longitude and set there in the meta data of the camera 
+		Récupérer la position en longitude et latitude de l'ISS afin de l'écrire dans les métadonnées des prises de vues.
+	"""
+    iss.compute() # Get the lat/long values from ephem
 
-# Bitwise-AND mask and original image
+    long_value = [float(i) for i in str(iss.sublong).split(":")]
 
-res_w = cv2.bitwise_and(image,image, mask=mask_w)
+    if long_value[0] < 0:
 
-res_b = cv2.bitwise_and(image, image, mask= mask_b)
-res_g = cv2.bitwise_and(image, image, mask= mask_g)
+        long_value[0] = abs(long_value[0])
+        camera.exif_tags['GPS.GPSLongitudeRef'] = "W"
+    else:
+        camera.exif_tags['GPS.GPSLongitudeRef'] = "E"
+    camera.exif_tags['GPS.GPSLongitude'] = '%d/1,%d/1,%d/10' % (long_value[0], long_value[1], long_value[2]*10)
 
-cv2.imshow("result", image)
-#cv2.imshow("result", res)
+    lat_value = [float(i) for i in str(iss.sublat).split(":")]
 
-cv2.imwrite( "result/result_mercator-projection.jpg", image);
-#cv2.imwrite( "result/result_green.jpg", res_b);
-#cv2.imwrite( "result/result_white.jpg", res_w);
+    if lat_value[0] < 0:
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+        lat_value[0] = abs(lat_value[0])
+        camera.exif_tags['GPS.GPSLatitudeRef'] = "S"
+    else:
+        camera.exif_tags['GPS.GPSLatitudeRef'] = "N"
+
+    camera.exif_tags['GPS.GPSLatitude'] = '%d/1,%d/1,%d/10' % (lat_value[0], lat_value[1], lat_value[2]*10)
+
+"""
+		OPENCV
+"""
+
+def is_night():
+	""" Détecter si la luminosité d'une image est suffisante. """
+	pass
+
+def draw_area():
+	""" Traiter l'image prise par l'astro pi afin d'identifier les sufaces de terre, d'eau et de nuage.
+
+	"""
+	pass
+
+def analyse_picture():
+	""" Récupérer le % d'eau, de terre, de nuage et de surface x sur l'image traité par draw_area().
+
+	"""
+	pass
+
+"""
+		finish up the loop
+"""
+
+def write_result(timestamp, water, ground, cloud, other, magnetometer, accelerometer):
+	""" Write data in the CSV file 
+		Ecrire les données récupéré durant la boucle sur une nouvelle ligne du fichier CSV.
+	"""	
+	logger.info("%s,%s,%s,%s,%s", timestamp, water, )
+
+def check_time():
+	""" Check if the program must be stopped 
+		Si le temps d'execution à dépassé la limite : arreter le programme
+	"""
+	now = int(time.time()) # in second
+	# 3h == 10,800 seconds
+	if (now - start_time) >= TIME_STOP:
+		# Stopper le programme
+		loop = False
+	else:
+		wait()
+
+def wait():
+	""" Wait before start again  
+		Call by : check_time()
+		Attendre que la durée TIME_LOOP se soit écoulé avant de commencer la prochaine boucle.
+	"""
+	now = time.time()
+	if (now - start_loop_time) < TIME_LOOP:
+		time.sleep(TIME_LOOP - (now - start_loop_time))
+
+
+##########################
+## in progress
+
+while loop:
+	update_matrix(0)
+	get_loop_timestamp()
+	magnetometer, accelerometer = get_sensors_value()
+	take_picture()
+
+	if not is_night():
+		update_matrix(1)
+		draw_area()
+		analyse_picture()
+
+	update_matrix(2)
+	write_result(...)
+	check_time()
+
+##########################
+## finish up the program
+
+camera.close()
