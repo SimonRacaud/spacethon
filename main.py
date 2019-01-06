@@ -6,8 +6,8 @@
 
 	---
 
-	Note: 	get_sensors_value(), write_result()			: A compléter
-			is_night(), draw_area(), analyse_picture()	: A faire
+	Note: 	get_sensors_value(), write_result(), analyse_picture() : A compléter
+			is_night(), draw_area() : A faire
 """
 
 import os
@@ -45,7 +45,7 @@ camera = PiCamera()
 camera.resolution = (640,480)
 
 ### SENSEHAT
-sh = SenseHat()
+sense = SenseHat()
 sense.set_imu_config(True, False, True) # (compass_enabled, gyro_enabled, accel_enabled)
 
 ##	Matrix led
@@ -102,14 +102,14 @@ def get_loop_timestamp():
 def get_sensors_value():
 	""" Get the value of the sensors 
 	"""
-	magnetometer = sense.get_compass_raw() # magnetometer
-	accelerometer = sense.get_accelerometer() # accelerometer
+	magnetometer = sense.get_compass_raw() # magnetometer [x, y, z] Floats representing the magnetic intensity of the axis in microteslas (µT)
+	accelerometer = sense.get_accelerometer() # accelerometer [pitch, roll, yaw] Floats representing the angle of the axis in degrees.
 	return (magnetometer, accelerometer)
 
 def take_picture():
 	""" Prend une photographie et l'enregistre dans un nouveau fichier. 
 	"""
-	get_latlon() # Set lat/long data in the meta data of the picture
+	get_latitude_longitude() # Set lat/long data in the meta data of the picture
 	camera.capture(dir_path+"/image_"+str(nbImage).zfill(3)+".jpg")
 	iss.compute() # mise à jour coordonnés
 	nbImage += 1
@@ -153,16 +153,32 @@ def draw_area():
 	""" Traiter l'image prise par l'astro pi afin d'identifier les sufaces de terre, d'eau et de nuage.
 
 	"""
+	sense.get_compass()	# gets the direction of North from the magnetometer in degrees.
 	pass
 
-def analyse_picture():
+def analyse_picture(img):
 	""" Récupérer le % d'eau, de terre, de nuage et de surface x sur l'image traité par draw_area().
-
+		Parcours de l'image pixel par pixel en récupérant le nombres de pixels bleu(eau), vert(terre), blanc(nuage, neige).
 	"""
-	pass
+	blue = 0  # Eau
+	green = 0 # Terre
+	white = 0 # Nuage, Neige
+	for i in range(img.shape[0]):
+		for j in range(img.shape[1]):
+			r, g, b = im[i, j]
+			if b > 200 and r < 50 and g < 50:
+				blue += 1
+			elif b < 50 and r < 50 and g > 200:
+				green += 1
+			elif b > 200 and r > 200 and g > 200:
+				white += 1
+	number_pixel = img.shape[0] * img.shape[1]
+	percentage_blue = (blue / number_pixel) * 100
+	percentage_green = (green / number_pixel) * 100
+	percentage_white = (white / number_pixel) * 100
 
 """
-		finish up the loop
+		Finish up the loop
 """
 
 def write_result(timestamp, water, ground, cloud, other, magnetometer, accelerometer):
