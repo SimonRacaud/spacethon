@@ -2,12 +2,11 @@
 	SPACETHON an AstroPI Project
 		2018-2019
 	
-	Authors: GAZEAU Lucas, RACAUD Simon, POIRIER Victor, MASSE Thomas 
+	Authors: GAZEAU Lucas, RACAUD Simon
 
 	---
 
-	Note: 	get_sensors_value(), write_result(), analyse_picture() : A compléter
-			is_night(), draw_area() : A faire
+	Note: 
 """
 
 import os
@@ -33,7 +32,8 @@ TIME_STOP = 000 # duration from which the program stop
 
 ### VARIABLES
 loop = True
-nbImage = 1
+picture_ID = 1
+row_ID = 1
 start_program_time = int(time.time()) # timestamp when the program has started (in second)
 start_loop_time = 0 # timestamp when the loop has started
 
@@ -65,11 +65,15 @@ img1 = [
 ]
 
 ### Logfile parameters
-"""[a voir]""" formatter = logging.Formatter('%(timestamp)s - %(water)s - %(ground)s - %(cloud)s - %(other)s - %(magnetometer)s - %(accelerometer)s') # Set a custom formatter
-logzero.formatter(formatter)
 logzero.logfile(DIR_PATH+"/data01.csv") # Create the CSV file
+"""
+# Set a custom formatter
+formatter = logging.Formatter('%(timestamp)s - %(water)s - %(ground)s - %(cloud)s - %(other)s - %(magnetometer)s - %(accelerometer)s') # Set a custom formatter
+logzero.formatter(formatter)
+"""
+logger.info("ROW,Time_Stamp,Picture_Number,Water,Ground,Cloud,MagX,MagY,MagZ,Acce_Pitch,Acce_Roll,AcceYaw")
 
-### Config ephem
+### Config ephem (A REMPLACER !!!!)
 name = "ISS (ZARYA)"
 line1 = "1 25544U 98067A   18362.36563081 -.00011736  00000-0 -17302-3 0  9998"
 line2 = "2 25544  51.6377 131.0297 0002747 209.2490 215.4464 15.53700691148714"
@@ -95,10 +99,6 @@ def update_matrix(state):
 		GET main data
 """
 
-def get_loop_timestamp():
-	""" Get the timestap when the loop has started """
-	start_loop_time = time.time()
-
 def get_sensors_value():
 	""" Get the value of the sensors 
 	"""
@@ -110,9 +110,9 @@ def take_picture():
 	""" Prend une photographie et l'enregistre dans un nouveau fichier. 
 	"""
 	get_latitude_longitude() # Set lat/long data in the meta data of the picture
-	camera.capture(dir_path+"/image_"+str(nbImage).zfill(3)+".jpg")
+	camera.capture(dir_path+"/image_"+str(picture_ID).zfill(3)+".jpg")
 	iss.compute() # mise à jour coordonnés
-	nbImage += 1
+	picture_ID += 1
 
 def get_latitude_longitude():
 	""" Get latitude/longitude and set there in the meta data of the camera 
@@ -166,7 +166,7 @@ def analyse_picture(img):
 	for i in range(img.shape[0]):
 		for j in range(img.shape[1]):
 			r, g, b = im[i, j]
-			if b > 200 and r < 50 and g < 50:
+			if b > 200 and r < 50 and g < 50:					# Ecarts à revoir
 				blue += 1
 			elif b < 50 and r < 50 and g > 200:
 				green += 1
@@ -181,11 +181,13 @@ def analyse_picture(img):
 		Finish up the loop
 """
 
-def write_result(timestamp, water, ground, cloud, other, magnetometer, accelerometer):
+def write_result(water, ground, cloud, magnetometer, accelerometer):
 	""" Write data in the CSV file 
 		Ecrire les données récupéré durant la boucle sur une nouvelle ligne du fichier CSV.
 	"""	
-	logger.info("%s,%s,%s,%s,%s", timestamp, water, )
+	# ROW, Time_Stamp, Picture_Number, Water, Ground, Cloud, MagX, MagY, MagZ, Acce_Pitch, Acce_Roll, AcceYaw
+	logger.info("%s,%s,image_%s.jpg,%s,%s,%s,%s,%s,%s,%s,%s,%s", row_ID, start_loop_time, str(picture_ID).zfill(3), water, ground, cloud, magnetometer[0], magnetometer[1], magnetometer[2], accelerometer[0], accelerometer[1], accelerometer[2])
+	row_ID+=1;
 
 def check_time():
 	""" Check if the program must be stopped 
@@ -214,7 +216,7 @@ def wait():
 
 while loop:
 	update_matrix(0)
-	get_loop_timestamp()
+	start_loop_time = time.time()
 	magnetometer, accelerometer = get_sensors_value()
 	take_picture()
 
@@ -224,7 +226,7 @@ while loop:
 		analyse_picture()
 
 	update_matrix(2)
-	write_result(...)
+	write_result(water, ground, cloud, magnetometer, accelerometer)
 	check_time()
 
 ##########################
