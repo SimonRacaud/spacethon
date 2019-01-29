@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-img = cv2.imread('test7.jpg')
+img = cv2.imread('Test/test29.jpg')
 Z = img.reshape((-1,3))
 
 # convert to np.float32
@@ -25,8 +25,8 @@ def deletePix(b1,v1,r1,b2,v2,r2):
     image[mask != 0] = [255,0,0]
     hsv[mask != 0] = [255,0,0]
 
-def isInColorRange(bvr,b1,v1,r1,b2,v2,r2):
-    if(bvr[0]<=b2 and bvr[0]>=b1 and bvr[1]<=v2 and bvr[1]>=v1 and bvr[2]<=r2 and bvr[2]>=r1):
+def isInColorRange(bvr,bvr1,bvr2):
+    if(bvr[0]<=bvr2[0] and bvr[0]>=bvr1[0] and bvr[1]<=bvr2[1] and bvr[1]>=bvr1[1] and bvr[2]<=bvr2[2] and bvr[2]>=bvr1[2]):
         return True
     else :
         return False
@@ -65,22 +65,22 @@ def isCloud(color,i,o):
         return False
 
 hsv = res2#[200:700, 400:800]
-cv2.imshow("avantTout", hsv)
-cv2.imwrite("getColor.jpg",hsv)
+#cv2.imshow("avantTout", hsv)
+#cv2.imwrite("getColor.jpg",hsv)
 height, width, channels = hsv.shape
 
             
 
 lower_blue = np.array([60,50,20])
-upper_blue = np.array([160,130,100])
+upper_blue = np.array([160,130,110])
 
-lower_green = np.array([90,100,100])
-upper_green = np.array([130,130,140])
+lower_green = np.array([70,70,70])
+upper_green = np.array([155,145,145])
 
-lower_green2 = np.array([150,170,185])
-upper_green2 = np.array([180,210,220])
+lower_green2 = np.array([130,145,160])
+upper_green2 = np.array([155,160,175])
 
-lower_white = np.array([100,125,110])
+lower_white = np.array([140,125,110])
 upper_white = np.array([205,200,200])
 
 
@@ -90,8 +90,32 @@ upper_white2 = np.array([255,255,255])
 lower_green3 = np.array([170,200,210])
 upper_green3 = np.array([200,235,240])
 
-mask_b = cv2.inRange(hsv, lower_blue, upper_blue)
-hsv[mask_b != 0] = [255,0,0]
+lower_green4 = np.array([90,85,84])
+upper_green4 = np.array([110,110,110])
+
+for i in range(0,height):
+    for o in range(0,width):
+        if(isInColorRange(hsv[i,o],lower_white,upper_white)):
+            hsv[i,o] = [255,255,255]
+        
+        elif(isInColorRange(hsv[i,o],lower_green,upper_green)):
+            hsv[i,o] = [0,255,0]
+            
+        elif(isInColorRange(hsv[i,o],lower_green2,upper_green2)):
+            hsv[i,o] = [0,255,0]
+           
+        elif(isInColorRange(hsv[i,o],lower_blue,upper_blue)):
+            hsv[i,o] = [255,0,0]
+            
+        if(isInColorRange(hsv[i,o],lower_green3,upper_green3)):
+            hsv[i,o] = [0,255,0]
+        
+        if(isInColorRange(hsv[i,o],lower_white2,upper_white2)):
+            hsv[i,o] = [255,255,255]
+        
+"""
+mask_w = cv2.inRange(hsv, lower_white, upper_white)
+hsv[mask_w != 0] = [255,255,255]
 
 mask_g = cv2.inRange(hsv, lower_green, upper_green)
 hsv[mask_g != 0] = [0,255,0]
@@ -99,19 +123,22 @@ hsv[mask_g != 0] = [0,255,0]
 mask_g = cv2.inRange(hsv, lower_green2, upper_green2)
 hsv[mask_g != 0] = [0,255,0]
 
+mask_b = cv2.inRange(hsv, lower_blue, upper_blue)
+hsv[mask_b != 0] = [255,0,0]
+
+
+
 mask_g = cv2.inRange(hsv, lower_green3, upper_green3)
 hsv[mask_g != 0] = [0,255,0]
 
-mask_w = cv2.inRange(hsv, lower_white, upper_white)
-hsv[mask_w != 0] = [255,255,255]
 
 mask_w = cv2.inRange(hsv, lower_white2, upper_white2)
 hsv[mask_w != 0] = [255,255,255]
-    
+""" 
 
 image = hsv
-cv2.imshow("image avant traitement ", image)
-cv2.imwrite("image avant traitement.jpg",image)
+#cv2.imshow("image avant traitement ", image)
+#cv2.imwrite("image avant traitement.jpg",image)
 # Algo inplane cloud or bad pixel remover
 exit = True
 decrementer = 0
@@ -174,7 +201,7 @@ for i in range(0,height) :
     
         
 blank_image = np.zeros((height,width,3), np.uint8)
-
+"""
 oldPix = image[0,0]
 Pix = np.array([0,0,0])
 for i in range(0,height-1) :
@@ -190,9 +217,9 @@ for o in range(0,width-1) :
         if((Pix[0]== 255 and Pix[1]==0 and Pix[2]==0) and(oldPix[0]== 0 and oldPix[1]==200 and oldPix[2]==0) or (Pix[0]== 0 and Pix[1]==200 and Pix[2]==0) and(oldPix[0]== 255 and oldPix[1]==0 and oldPix[2]==0) ):
             blank_image[i,o]= [200,50,10]
         oldPix = image[i,o]
-
+"""
 cv2.imshow('res2',image)
-cv2.imwrite("colorTest.jpg",image)
-cv2.imshow("Coast",blank_image)
+#cv2.imwrite("colorTest.jpg",image)
+#cv2.imshow("Coast",blank_image)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
