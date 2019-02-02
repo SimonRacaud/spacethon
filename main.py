@@ -165,17 +165,18 @@ def analyse_picture(img):
 	white = 0 # Nuage, Neige
 	for i in range(img.shape[0]):
 		for j in range(img.shape[1]):
-			r, g, b = im[i, j]
-			if b > 200 and r < 50 and g < 50:					# Ecarts à revoir
+			b, g, r = im[i, j]
+			if b > 220 and r < 10 and g < 10:					# Ecarts à revoir
 				blue += 1
-			elif b < 50 and r < 50 and g > 200:
+			elif b < 10 and r < 10 and g > 220:
 				green += 1
-			elif b > 200 and r > 200 and g > 200:
+			elif b > 220 and r > 220 and g > 220:
 				white += 1
 	number_pixel = img.shape[0] * img.shape[1]
 	percentage_blue = (blue / number_pixel) * 100
 	percentage_green = (green / number_pixel) * 100
 	percentage_white = (white / number_pixel) * 100
+	return (percentage_blue, percentage_green, percentage_white)
 
 """
 		Finish up the loop
@@ -223,11 +224,12 @@ while loop:
 	if not is_night():
 		update_matrix(1)
 		draw_area()
-		analyse_picture()
+		result = analyse_picture()
 
 	update_matrix(2)
-	write_result(water, ground, cloud, magnetometer, accelerometer)
+	write_result(result[0], result[1], result[2], magnetometer, accelerometer)
 	check_time()
+	break;
 
 ##########################
 ## finish up the program
